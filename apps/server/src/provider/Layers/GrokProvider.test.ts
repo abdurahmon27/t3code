@@ -426,18 +426,24 @@ it.layer(NodeServices.layer)("checkGrokProviderStatus", (it) => {
           "}",
           'if (process.argv[2] === "models") {',
           '  const fs = await import("node:fs");',
-          // @effect-diagnostics-next-line preferSchemaOverJson:off
-          `  const callsPath = ${JSON.stringify(NodePath.join(dir, MODELS_CALLS_FILE))};`,
-          "  const isRetry = fs.existsSync(callsPath);",
+          `  const callsPath = new URL("${MODELS_CALLS_FILE}", import.meta.url);`,
+          "  const retryOutput = fs.existsSync(callsPath) ? process.env.FAKE_GROK_RETRY_MODELS_OUTPUT : undefined;",
           '  fs.appendFileSync(callsPath, "models\\n");',
+          "  if (retryOutput !== undefined) {",
+          "    process.stdout.write(retryOutput);",
+          "    process.exit(0);",
+          "  }",
           // @effect-diagnostics-next-line preferSchemaOverJson:off
-          `  process.stdout.write(isRetry ? ${JSON.stringify(input.retryModelsOutput ?? input.modelsOutput)} : ${JSON.stringify(input.modelsOutput)});`,
+          `  process.stdout.write(${JSON.stringify(input.modelsOutput)});`,
           "  process.exit(0);",
           "}",
           'if (process.argv[2] !== "agent") process.exit(1);',
           ...(input.acp ? [execScriptSource({ scriptPath: mockAgentPath })] : ["process.exit(3);"]),
           "",
         ].join("\n"),
+        ...(input.retryModelsOutput === undefined
+          ? {}
+          : { env: { FAKE_GROK_RETRY_MODELS_OUTPUT: input.retryModelsOutput } }),
       });
     });
 
